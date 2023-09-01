@@ -1,0 +1,2 @@
+#!/bi/bash
+chown -h vicent:staff _hello

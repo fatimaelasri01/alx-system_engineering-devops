@@ -1,6 +1,6 @@
 # Ensure SSH client configuration file exists
 file { '/etc/ssh/ssh_config':
-  ensure  => 'present'
+  ensure  => file
 }
 
 # Ensure PasswordAuthentication is set to no

@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Script to configure a new Ubuntu machine for a web server with Nginx
+# and add a custom header to its HTTP response.
+
+# Define variables for link and redirection
+link="https://www.youtube.com/watch?v=PCfiqY05BpA"
+redirect="server_name _;\n\trewrite ^/redirect_me/$ $link permanent;"
+error_location="location = /404.html {\n\t\troot /var/www/html/;\n\t\tinternal;\n"
+error_directive="error_page 404 /404.html;\n\t$error_location}"
+error_404="}\n\n\t$error_directive\t}"
+
+# Update package list
+sudo apt-get update
+
+# Install nginx
+sudo apt-get install -y nginx
+
+# Allow traffic on port 80 (HTTP) using UFW
+sudo ufw allow 'Nginx HTTP'
+
+# Set ownership to the current user for /var/www/ directory
+sudo chown -R "$USER:$USER" /var/www/
+
+# Create default index.html
+echo "Hello World!" > /var/www/html/index.html
+
+# Create custom 404 page
+echo "This is not a page" > /var/www/html/404.html
+
+# Replace "server_name _;" with redirection rule defined in $redirect variable in 'default' file
+sudo sed -i "s|server_name\ _;|$redirect|" /etc/nginx/sites-available/default
+
+# Update Nginx configuration to use custom 404 page
+sudo sed -i "0,/}/ s|}|$error_404|" /etc/nginx/sites-available/default
+
+# Restart Nginx service
+sudo service nginx restart
+
+# Check if the custom header is already configured in nginx.conf
+config_file="/etc/nginx/nginx.conf"
+
+if ! sudo grep -q "add_header X-Served-By" $config_file;
+then
+    # If not, add the custom header configuration
+    header_key="X-Served-By"
+    header_value="\$hostname"
+    header="add_header $header_key $header_value;"
+    search="http {"
+    new_conf="$search\n\t$header"
+
+    # Replace the value found with the new configuration
+    sudo sed -i "s|$search|$new_conf|" $config_file
+
+    # Restart Nginx Service
+    sudo service nginx restart
+fi
+
